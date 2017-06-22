@@ -1,0 +1,32 @@
+{
+  "bot-id": "",
+  "at-bot-str": "",
+  "api-token": "",
+  "default-read-websocket-delay": 1,
+  "default-user-mapping-fn": "usermapping.json",
+  "default-channel-mapping-fn": "channelmapping.json",
+  "monitor-keyword-config":{
+    "module_path": "",
+    "module_name": "",
+    "default-keyword-list": [],
+    "default-userid-whilelist": [],
+    "default-report-channel": ""
+  },
+  "response-command-config":{
+    "command-settings":
+    {
+      "^snipe":
+      {
+        "module_path": "lib.responseCmd.animationResponse",
+        "module_name": "ResponseSnipeCmd"
+      },
+      "[bB][lL][aA][mM][eE]":
+      {
+        "module_path": "lib.responseCmd.animationResponse",
+        "module_name": "ResponseBlameCmd"
+      }
+    },
+    "default-response-cmd-module-path": "lib.responseCmd.animationResponse",
+    "default-response-cmd-module-name": "ResponseDefaultCmd"
+  }
+}
