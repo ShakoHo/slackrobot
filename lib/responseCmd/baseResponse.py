@@ -1,11 +1,8 @@
 class BaseResponse(object):
-    def __init__(self, slack_client, full_msg_obj, cmd_config, current_content, current_channel, at_bot_str):
+    def __init__(self, slack_client, response_config, input_msg):
         self.slack_client = slack_client
-        self.full_msg_obj = full_msg_obj
-        self.cmd_config = cmd_config
-        self.current_content = current_content
-        self.current_channel = current_channel
-        self.at_bot_str = at_bot_str
+        self.response_config = response_config
+        self.input_msg = input_msg
 
-    def response(self):
+    def cmd_response(self, at_bot_str, current_msg_obj, current_msg_content, current_msg_channel):
         pass

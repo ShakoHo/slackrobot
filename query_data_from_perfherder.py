@@ -1,7 +1,7 @@
 """
 
 Usage:
-  query_data_from_perfherder.py [--query-signatures] [--interval=<str>] [--keyword=<str>] [--browser-type=<str>] [--platform=<str>] [--suite-name=<str>] [--begin-date=<str>] [--end-date=<str>]
+  query_data_from_perfherder.py [--query-signatures] [--interval=<str>] [--keyword=<str>] [--browser-type=<str>] [--platform=<str>] [--suite-name=<str>] [--begin-date=<str>] [--end-date=<str>] [--query-backfill]
   query_data_from_perfherder.py (-h | --help)
 
 Options:
@@ -14,6 +14,7 @@ Options:
   --suite-name=<str>        Query by suite name [default: all]
   --begin-date=<str>        Query by begin date [default: all]
   --end-date=<str>          Query by end date [default: all]
+  --query-backfill          Query backfill
 """
 import os
 import json
@@ -128,63 +129,81 @@ class QueryData(object):
 
         for sig in input_json:
             for data in input_json[sig]:
-                datetime_str = datetime.utcfromtimestamp(data['push_timestamp']).strftime("%Y-%m-%d %H:%M:%S")
+                datetime_str = datetime.utcfromtimestamp(data['push_timestamp']).strftime("%Y-%m-%d")
                 browser_type_str = signature_data['signature_data'][sig]['browser_type']
                 platform_str = signature_data['signature_data'][sig]['machine_platform']
+                suite_name_str = signature_data['signature_data'][sig]['suite_name']
                 if b_timestamp != 0.0:
                     if e_timestamp != 0.0:
                         if b_timestamp <= data['push_timestamp'] <= e_timestamp:
                             if datetime_str not in self.json_output:
-                                self.json_output[datetime_str] = {browser_type_str: {platform_str: [data['value']]}}
+                                self.json_output[datetime_str] = {suite_name_str: {browser_type_str: {platform_str: [data['value']]}}}
                             else:
-                                if browser_type_str not in self.json_output[datetime_str]:
-                                    self.json_output[datetime_str][browser_type_str] = {platform_str: [data['value']]}
+                                if suite_name_str not in self.json_output[datetime_str]:
+                                    self.json_output[datetime_str][suite_name_str] = {browser_type_str: {platform_str: [data['value']]}}
                                 else:
-                                    if platform_str not in self.json_output[datetime_str][browser_type_str]:
-                                        self.json_output[datetime_str][browser_type_str][platform_str] = [data['value']]
+                                    if browser_type_str not in self.json_output[datetime_str][suite_name_str]:
+                                        self.json_output[datetime_str][suite_name_str][browser_type_str] = {platform_str: [data['value']]}
                                     else:
-                                        self.json_output[datetime_str][browser_type_str][platform_str].append(data['value'])
+                                        if platform_str not in self.json_output[datetime_str][suite_name_str][browser_type_str]:
+                                            self.json_output[datetime_str][suite_name_str][browser_type_str][platform_str] = [data['value']]
+                                        else:
+                                            self.json_output[datetime_str][suite_name_str][browser_type_str][platform_str].append(data['value'])
 
                     else:
                         if b_timestamp <= data['push_timestamp']:
                             if datetime_str not in self.json_output:
-                                self.json_output[datetime_str] = {browser_type_str: {platform_str: [data['value']]}}
+                                self.json_output[datetime_str] = {suite_name_str: {browser_type_str: {platform_str: [data['value']]}}}
                             else:
-                                if browser_type_str not in self.json_output[datetime_str]:
-                                    self.json_output[datetime_str][browser_type_str] = {platform_str: [data['value']]}
+                                if suite_name_str not in self.json_output[datetime_str]:
+                                    self.json_output[datetime_str][suite_name_str] = {browser_type_str: {platform_str: [data['value']]}}
                                 else:
-                                    if platform_str not in self.json_output[datetime_str][browser_type_str]:
-                                        self.json_output[datetime_str][browser_type_str][platform_str] = [data['value']]
+                                    if browser_type_str not in self.json_output[datetime_str][suite_name_str]:
+                                        self.json_output[datetime_str][suite_name_str][browser_type_str] = {platform_str: [data['value']]}
                                     else:
-                                        self.json_output[datetime_str][browser_type_str][platform_str].append(data['value'])
+                                        if platform_str not in self.json_output[datetime_str][suite_name_str][browser_type_str]:
+                                            self.json_output[datetime_str][suite_name_str][browser_type_str][platform_str] = [data['value']]
+                                        else:
+                                            self.json_output[datetime_str][suite_name_str][browser_type_str][platform_str].append(data['value'])
                 else:
                     if e_timestamp != 0.0:
                         if data['push_timestamp'] <= e_timestamp:
 
                             if datetime_str not in self.json_output:
-                                self.json_output[datetime_str] = {browser_type_str: {platform_str: [data['value']]}}
+                                self.json_output[datetime_str] = {suite_name_str: {browser_type_str: {platform_str: [data['value']]}}}
                             else:
-                                if browser_type_str not in self.json_output[datetime_str]:
-                                    self.json_output[datetime_str][browser_type_str] = {platform_str: [data['value']]}
+                                if suite_name_str not in self.json_output[datetime_str]:
+                                    self.json_output[datetime_str][suite_name_str] = {browser_type_str: {platform_str: [data['value']]}}
                                 else:
-                                    if platform_str not in self.json_output[datetime_str][browser_type_str]:
-                                        self.json_output[datetime_str][browser_type_str][platform_str] = [data['value']]
+                                    if browser_type_str not in self.json_output[datetime_str][suite_name_str]:
+                                        self.json_output[datetime_str][suite_name_str][browser_type_str] = {platform_str: [data['value']]}
                                     else:
-                                        self.json_output[datetime_str][browser_type_str][platform_str].append(data['value'])
+                                        if platform_str not in self.json_output[datetime_str][suite_name_str][browser_type_str]:
+                                            self.json_output[datetime_str][suite_name_str][browser_type_str][platform_str] = [data['value']]
+                                        else:
+                                            self.json_output[datetime_str][suite_name_str][browser_type_str][platform_str].append(data['value'])
                     else:
                         if datetime_str not in self.json_output:
-                            self.json_output[datetime_str] = {browser_type_str: {platform_str: [data['value']]}}
+                            self.json_output[datetime_str] = {
+                                suite_name_str: {browser_type_str: {platform_str: [data['value']]}}}
                         else:
-                            if browser_type_str not in self.json_output[datetime_str]:
-                                self.json_output[datetime_str][browser_type_str] = {platform_str: [data['value']]}
+                            if suite_name_str not in self.json_output[datetime_str]:
+                                self.json_output[datetime_str][suite_name_str] = {
+                                    browser_type_str: {platform_str: [data['value']]}}
                             else:
-                                if platform_str not in self.json_output[datetime_str][browser_type_str]:
-                                    self.json_output[datetime_str][browser_type_str][platform_str] = [data['value']]
+                                if browser_type_str not in self.json_output[datetime_str][suite_name_str]:
+                                    self.json_output[datetime_str][suite_name_str][browser_type_str] = {
+                                        platform_str: [data['value']]}
                                 else:
-                                    self.json_output[datetime_str][browser_type_str][platform_str].append(data['value'])
+                                    if platform_str not in self.json_output[datetime_str][suite_name_str][browser_type_str]:
+                                        self.json_output[datetime_str][suite_name_str][browser_type_str][
+                                            platform_str] = [data['value']]
+                                    else:
+                                        self.json_output[datetime_str][suite_name_str][browser_type_str][
+                                            platform_str].append(data['value'])
 
 
-    def query_data(self, query_interval, query_keyword, query_btype, query_platform, query_suite_name, query_begin_date, query_end_date):
+    def query_data(self, query_interval, query_keyword, query_btype, query_platform, query_suite_name, query_begin_date, query_end_date, query_backfill):
         if not os.path.exists(DEFAULT_HASAL_SIGNATURES):
             signature_data = self.query_signatures()
         else:
@@ -200,7 +219,25 @@ class QueryData(object):
             if query_obj:
                 json_obj = json.loads(query_obj.read())
                 self.print_data(json_obj, signature_data, query_begin_date.strip(), query_end_date.strip())
-        print json.dumps(self.json_output)
+
+        output_list = []
+        for date_str in self.json_output:
+            for suite_name_str in self.json_output[date_str]:
+                for browser_type_str in self.json_output[date_str][suite_name_str]:
+                    for platform_str in self.json_output[date_str][suite_name_str][browser_type_str]:
+                        if query_backfill:
+                            if len(self.json_output[date_str][suite_name_str][browser_type_str][platform_str]) < 6:
+                                output_list.append({"date": date_str, "suite": suite_name_str, "b_type": browser_type_str,
+                                                    "platform": platform_str, "count": len(self.json_output[date_str][suite_name_str][browser_type_str][platform_str]),
+                                                    "data": self.json_output[date_str][suite_name_str][browser_type_str][platform_str]})
+                        else:
+                            output_list.append({"date": date_str, "suite": suite_name_str, "b_type": browser_type_str,
+                                                "platform": platform_str, "count": len(
+                                    self.json_output[date_str][suite_name_str][browser_type_str][platform_str]),
+                                                "data": self.json_output[date_str][suite_name_str][browser_type_str][
+                                                    platform_str]})
+        output_list = sorted(output_list, key=lambda k: k['date'])
+        print json.dumps(output_list)
 
 
 def main():
@@ -209,9 +246,13 @@ def main():
     query_data_obj = QueryData()
     if arguments['--query-signatures']:
         query_data_obj.query_signatures()
+    elif arguments['--query-backfill']:
+        query_data_obj.query_data(arguments['--interval'], arguments['--keyword'], arguments['--browser-type'],
+                                  arguments['--platform'], arguments['--suite-name'], arguments['--begin-date'],
+                                  arguments['--end-date'], arguments['--query-backfill'])
     else:
         query_data_obj.query_data(arguments['--interval'], arguments['--keyword'], arguments['--browser-type'],
-                                  arguments['--platform'], arguments['--suite-name'], arguments['--begin-date'], arguments['--end-date'])
+                                  arguments['--platform'], arguments['--suite-name'], arguments['--begin-date'], arguments['--end-date'], arguments['--query-backfill'])
 
 if __name__ == '__main__':
     main()

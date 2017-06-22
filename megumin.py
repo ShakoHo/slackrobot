@@ -14,7 +14,9 @@ class SlackBot(object):
     DEFAULT_READ_WEBSOCKET_DELAY = 1
     DEFAULT_SUPPORT_COMMAND_DICT = {'explosion': 'explosion_command',
                                     'status': 'status_command',
-                                    'blame': 'blame_command'}
+                                    'blame': 'blame_command',
+                                    'backfill': 'backfill_command',
+                                    'query': 'query_command'}
 
     def __init__(self):
         config = self.load_config()
@@ -61,6 +63,84 @@ class SlackBot(object):
                            output['channel']
         return None, None
 
+    def query_command(self, input_command_str):
+        cmd_list = input_command_str.split(" ")
+        parameter_list = []
+        if len(cmd_list) > 1:
+            for p_value in cmd_list:
+                if p_value.startswith("--"):
+                    parameter_list.append(p_value)
+
+            parameter_str = " ".join(parameter_list)
+            query_cmd = "python query_data_from_perfherder.py " + parameter_str
+            print "status_command: %s" % query_cmd
+            returncode, output = tee.system2(query_cmd)
+            if returncode == 0:
+                if len(output) > 1:
+                    return_str = ""
+                    try:
+                        print_json = json.loads("".join(output))
+                        for data in print_json:
+                            return_str += '{:<12} {:<100} {:<20} {:<5}\n'.format(data['date'], data['suite'], data['platform'], data['count'])
+                        if return_str == "":
+                            return "https://dynamicfireworks.co.uk/wp-content/uploads/2013/12/dynamic-fireworks-earlybird-background-e1470063570344.jpg?" + str(
+                                time.time())
+                        else:
+                            return return_str
+                    except:
+                        return ".. Ah, Houston, we've had a problem."
+                else:
+                    print "len(output) < 1"
+                    return ".. Ah, Houston, we've had a problem."
+            else:
+                print "returncode != 0"
+                return ".. Ah, Houston, we've had a problem."
+        else:
+            return "Please use --interval=, --keyword=, --browser-type=, --begin-date=, --end-date= to query result"
+
+
+    def backfill_command(self, input_command_str):
+        cmd_list = input_command_str.split(" ")
+        filter_date = None
+        if len(cmd_list) > 1:
+            filter_date = cmd_list[1]
+        query_cmd = "python query_data_from_perfherder.py --interval=31536000 --keyword=ail --browser-type=firefox --begin-date=2017-01-15 --end-date=2017-06-19 --query-backfill"
+        print "status_command: %s" % query_cmd
+        returncode, output = tee.system2(query_cmd)
+        if returncode == 0:
+            if len(output) > 1:
+                return_str = ""
+                try:
+                    print_json = json.loads("".join(output))
+                    for data in print_json:
+                        if filter_date:
+                            if filter_date.lower().startswith("windows"):
+                                if filter_date.lower().strip() == data['platform']:
+                                    return_str += '{:<12} {:<100} {:<20} {:<5}\n'.format(data['date'], data['suite'],
+                                                                                         data['platform'],
+                                                                                         data['count'])
+                            else:
+                                if filter_date.strip() == data['date']:
+                                    return_str += '{:<12} {:<100} {:<20} {:<5}\n'.format(data['date'], data['suite'],
+                                                                                         data['platform'],
+                                                                                         data['count'])
+                        else:
+                            return_str += '{:<12} {:<100} {:<20} {:<5}\n'.format(data['date'], data['suite'],
+                                                                                 data['platform'], data['count'])
+                    if return_str == "":
+                        return "https://dynamicfireworks.co.uk/wp-content/uploads/2013/12/dynamic-fireworks-earlybird-background-e1470063570344.jpg?" + str(
+                            time.time())
+                    else:
+                        return return_str
+                except:
+                    return ".. Ah, Houston, we've had a problem."
+            else:
+                print "len(output) < 1"
+                return ".. Ah, Houston, we've had a problem."
+        else:
+            print "returncode != 0"
+            return ".. Ah, Houston, we've had a problem."
+
     def blame_command(self, input_command_str):
         c_list = input_command_str.split(" ")
         if len(c_list) == 2:
@@ -69,32 +149,37 @@ class SlackBot(object):
             return "Stop blaming everyone!! Everything is your fault!!!(>_>) "
 
     def explosion_command(self, input_command_str):
-        return "http://www.anime-evo.net/wp-content/uploads/2016/03/Konosuba_10_18.jpg"
+        return "https://i.makeagif.com/media/8-03-2016/LGPFFL.gif?" + str(time.time())
 
     def status_command(self, input_command_str):
         yesterday_date = date.today() - timedelta(1)
         yesterday_date_str = yesterday_date.strftime('%Y-%m-%d')
-        query_keyword = input_command_str.split(" ")[1]
-        query_cmd = "python query_data_from_perfherder.py --keyword=%s --begin-date=%s" % (query_keyword, yesterday_date_str)
-        print "status_command: %s" % query_cmd
-        returncode, output = tee.system2(query_cmd)
-        if returncode == 0:
-            if len(output) > 1:
-                try:
-                    return_str = ""
-                    print output
-                    print_json = json.loads("".join(output))
-                    for date_str in print_json:
-                        for b_type in print_json[date_str]:
-                            for platform_str in print_json[date_str][b_type]:
-                                return_str += '{:30s} {:15s} {:20s} {:30s}\n'.format(date_str, b_type, platform_str, print_json[date_str][b_type][platform_str])
-                    return return_str
-                except:
+        cmd_list = input_command_str.split(" ")
+        if len(cmd_list) > 1:
+            query_keyword = input_command_str.split(" ")[1]
+            query_cmd = "python query_data_from_perfherder.py --keyword=%s --begin-date=%s" % (query_keyword, yesterday_date_str)
+            print "status_command: %s" % query_cmd
+            returncode, output = tee.system2(query_cmd)
+            if returncode == 0:
+                if len(output) > 1:
+                    try:
+                        return_str = ""
+                        print output
+                        print_json = json.loads("".join(output))
+                        for date_str in print_json:
+                            for b_type in print_json[date_str]:
+                                for platform_str in print_json[date_str][b_type]:
+                                    return_str += '{:30s} {:15s} {:20s} {:30s}\n'.format(date_str, b_type, platform_str, print_json[date_str][b_type][platform_str])
+                        return return_str
+                    except:
+                        return ".. Ah, Houston, we've had a problem."
+                else:
                     return ".. Ah, Houston, we've had a problem."
             else:
                 return ".. Ah, Houston, we've had a problem."
         else:
             return ".. Ah, Houston, we've had a problem."
+
 
 
     def handle_command(self, command, channel):
