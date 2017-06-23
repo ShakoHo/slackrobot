@@ -17,6 +17,7 @@ import importlib
 from docopt import docopt
 from slackclient import SlackClient
 
+
 class SlackBot(object):
 
     def load_config(self, input_config_fp):
@@ -28,18 +29,23 @@ class SlackBot(object):
 
     def init_variable(self, input_config):
         api_token_str = input_config.get('api-token', None)
+        self.regular_actions_timestamp_recorder = {}
         if api_token_str:
-            self.slack_client = SlackClient(self.config['api-token'])
+            self.slack_client = SlackClient(api_token_str)
         else:
             print "Missing either api-token or bot-id value in config file!"
             sys.exit(1)
 
     def __init__(self, config_fp):
-        self.config = self.load_config(config_fp)
-        if self.config:
-            self.init_variable(self.config)
+        if os.path.exists(config_fp):
+            self.config = self.load_config(config_fp)
+            if self.config:
+                self.init_variable(self.config)
+            else:
+                print "Can't load configuration json file, exit(1)"
+                sys.exit(1)
         else:
-            print "Can't load configuration json file, exit(1)"
+            print "Can't find config file path, exit(1)"
             sys.exit(1)
 
     def parse_input_message(self, input_message, at_bot_str):
@@ -52,7 +58,7 @@ class SlackBot(object):
         return None, None, None
 
     def monitor_keywords(self, input_message, monitor_config, channel_mapping_fn, user_mapping_fn):
-        module_class = getattr(importlib.import_module(monitor_config['module_path']), monitor_config['module_name'])
+        module_class = getattr(importlib.import_module(monitor_config['module-path']), monitor_config['module-name'])
         module_obj = module_class(self.slack_client, monitor_config, input_message)
         module_obj.monitor(channel_mapping_fn, user_mapping_fn)
 
@@ -67,8 +73,8 @@ class SlackBot(object):
                     current_command = supported_command_regex_pattern
                     break
             if current_command:
-                module_path = command_config['command-settings'][current_command]['module_path']
-                module_name = command_config['command-settings'][current_command]['module_name']
+                module_path = command_config['command-settings'][current_command]['module-path']
+                module_name = command_config['command-settings'][current_command]['module-name']
             else:
                 module_path = command_config['default-response-cmd-module-path']
                 module_name = command_config['default-response-cmd-module-name']
@@ -84,6 +90,35 @@ class SlackBot(object):
 
         time.sleep(self.config.get('default-read-websocket-delay', 1))
 
+    def regular_actions_handler(self, regular_actions_config):
+        for regular_action_module_name in regular_actions_config['action-settings']:
+            previous_timestamp = self.regular_actions_timestamp_recorder.get(regular_action_module_name, None)
+            alert_interval = regular_actions_config['action-settings'][regular_action_module_name].get('alert-interval', None)
+            current_trigger_flag = False
+            record_current_timestamp_flag = False
+            if previous_timestamp:
+                if time.time() - previous_timestamp >= alert_interval:
+                    current_trigger_flag = True
+                    record_current_timestamp_flag = True
+            else:
+                if alert_interval is None:
+                    current_trigger_flag = True
+                    record_current_timestamp_flag = False
+                else:
+                    current_trigger_flag = True
+                    record_current_timestamp_flag = True
+
+            if current_trigger_flag:
+                regular_action_module_path = regular_actions_config['action-settings'][regular_action_module_name][
+                    'module-path']
+                module_class = getattr(importlib.import_module(regular_action_module_path), regular_action_module_name)
+                module_obj = module_class(self.slack_client,
+                                          regular_actions_config['action-settings'][regular_action_module_name],
+                                          regular_actions_config['default-report-channel'])
+                module_obj.run()
+                if record_current_timestamp_flag:
+                    self.regular_actions_timestamp_recorder[regular_action_module_name] = time.time()
+
     def run(self):
         if self.slack_client.rtm_connect():
             print("Kazuma is online!!!")
@@ -92,6 +127,9 @@ class SlackBot(object):
 
                 # real time message based action handler
                 self.rtm_actions_handler(current_message)
+
+                # regular based action handler
+                self.regular_actions_handler(self.config['regular-action-config'])
 
         else:
             print("Connection failed. Invalid Slack token or bot ID?")

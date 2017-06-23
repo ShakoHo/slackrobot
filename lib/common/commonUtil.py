@@ -2,6 +2,10 @@ import os
 import json
 
 
+def post_message_to_slack(slack_client, message_content, message_channel):
+    slack_client.api_call("chat.postMessage", channel=message_channel, text=message_content, as_user=True)
+
+
 def query_api_id_name_mapping(slack_client, input_query_data, mapping_fn, query_method, query_data_list_name,
                               query_data_return_key):
     query_key = input_query_data.keys()[0]
